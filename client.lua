@@ -1,5 +1,7 @@
 local timer = 0
 local setInVehicle = false
+local cuffedProp = nil
+
 
 ESX = exports["es_extended"]:getSharedObject()
 
@@ -406,6 +408,21 @@ RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords
         SetEntityCoords(playerPed, x, y, z)
         SetEntityHeading(playerPed, playerheading)
         Citizen.Wait(250)
+
+
+        local propName = "p_cs_cuffs_02_s"  -- Wähle hier das gewünschte Modell aus
+        local model = GetHashKey(propName)
+        RequestModel(model)
+        while not HasModelLoaded(model) do
+            Citizen.Wait(10)
+        end
+
+        cuffedProp = CreateObject(model, 0.0, 0.0, 0.0, true, true, false)
+        -- Beispiel: Prop an der rechten Hand (Bone 57005) mit angepassten Offsets
+        local boneIndex = GetPedBoneIndex(playerPed, 57005)
+        AttachEntityToEntity(cuffedProp, playerPed, boneIndex, 0.025, 0.06, 0.0, 75.0, -0.1, 75.0, false, false, false, false, 2, true)
+
+
         loadAnimationDictonary('mp_arrest_paired')
         TaskPlayAnim(playerPed, 'mp_arrest_paired', 'crook_p2_back_right', 8.0, -8, 3750 , 2, 0, 0, 0, 0)
         Citizen.Wait(3360)
@@ -419,6 +436,7 @@ RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords
         end
         
         ESX.UI.Menu.CloseAll()
+
 
         SetCurrentPedWeapon(playerPed, 'WEAPON_UNARMED', true)
         DisablePlayerFiring(playerPed, true)
@@ -471,6 +489,8 @@ end)
 
 RegisterNetEvent("klamer_handcuffs:uncuffMe", function(playerheading, playercoords, playerlocation)
     local playerPed = PlayerPedId()
+        -- Entferne das Handschellen-Prop, falls es existiert
+
     if not playerheading then
         ClearPedTasks(playerPed)
         ClearPedTasksImmediately(playerPed)
@@ -488,6 +508,10 @@ RegisterNetEvent("klamer_handcuffs:uncuffMe", function(playerheading, playercoor
         Citizen.Wait(250)
         TaskPlayAnim(playerPed, 'mp_arresting', 'b_uncuff', 8.0, -8,-1, 2, 0, 0, 0, 0)
         Citizen.Wait(2500)
+        if cuffedProp then
+            DeleteObject(cuffedProp)
+            cuffedProp = nil
+        end
         ClearPedTasks(playerPed)
         ClearPedTasksImmediately(playerPed)
         SetEnableHandcuffs(playerPed, false)
