@@ -85,6 +85,12 @@ RegisterNetEvent("esx:setJob", function(PlayerJob)
     PlayerData.job.grade = PlayerJob.grade
 end)
 
+action = function(entity)
+    print("Fußfesseln-Anlege-Event ausgelöst")
+    local targetServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
+    TriggerServerEvent("klamer_handcuffs:cuffFeetPlayer", targetServerId)
+end
+
 
 
 local text_loop = false
@@ -335,6 +341,45 @@ exports['qtarget']:Player({
                 end
             end
         },
+        {
+            icon = "fa-solid fa-shoe-prints", -- Icon für Fußfesseln (anpassen, falls gewünscht)
+            label = "Fußfesseln anlegen",
+            item = Config.req_items['anklecuff'], -- Stelle sicher, dass dieser Eintrag in deiner Config existiert
+            action = function(entity)
+                local targetServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
+                -- Trigger Server-Event zum Anlegen der Fußfesseln beim Zielspieler
+                TriggerServerEvent("klamer_handcuffs:cuffFeetPlayer", targetServerId)
+            end,
+            canInteract = function(entity)
+                if IsPedAPlayer(entity) then
+                    local target = Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity)))
+                    -- Es soll nur möglich sein, Fußfesseln anzulegen, wenn der Spieler bereits Handschellen hat und noch keine Fußfesseln
+                    if target.state.klamer_PlayerIsCuffed and not target.state.footCuffed then
+                        return true
+                    end
+                end
+                return false
+            end
+        },
+        {
+            icon = "fa-solid fa-shoe-prints", -- Icon, ggf. anpassen
+            label = "Fußfesseln entfernen",
+            item = Config.req_items['anklecuff'], -- Falls du einen Item-Check wünschst
+            action = function(entity)
+                local targetServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
+                TriggerServerEvent("klamer_handcuffs:uncuffFeetPlayer", targetServerId)
+            end,
+            canInteract = function(entity)
+                if IsPedAPlayer(entity) then
+                    local target = Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity)))
+                    -- Zeige diesen Eintrag nur, wenn der Spieler aktuell Fußfesseln trägt
+                    if target.state.footCuffed then
+                        return true
+                    end
+                end
+                return false
+            end
+        }
     },
     distance = 4.0
 })
@@ -576,6 +621,49 @@ end)
 
 RegisterNetEvent('klamer_notify_handcuff',function(text)
     klamer_notify(text)
+end)
+
+-- Foot Cuffs
+local footCuffed = false
+
+RegisterNetEvent("klamer_handcuffs:cuffFeet", function()
+    local playerPed = PlayerPedId()
+    
+    -- Prüfung: Nur anwendbar, wenn Handschellen bereits angelegt sind (z. B. über das Flag zakajdankowany)
+    if not zakajdankowany then
+        klamer_notify("Fehler", "Zuerst Handschellen anlegen!", 2500, "error")
+        return
+    end
+    
+    -- Der Spieler, der die Fußfesseln anlegt, soll sich hinknien.
+    local kneelDict = "anim@gangops@facility@servers@"
+    local kneelAnim = "kneel"
+    RequestAnimDict(kneelDict)
+    while not HasAnimDictLoaded(kneelDict) do
+        Citizen.Wait(10)
+    end
+    TaskPlayAnim(playerPed, kneelDict, kneelAnim, 8.0, -8, 2000, 1, 0, false, false, false)
+    Citizen.Wait(2000)  -- Warte, bis die Animation abgespielt wurde
+
+    -- Fußfesseln-Prop: Definiere hier den Modellnamen (ersetze "prop_ankle_cuffs" durch den korrekten Namen, falls anders)
+
+    -- Bewegungsunfähigkeit: Spieler einfrieren
+    TaskPlayAnim(playerPed, "missminuteman_1ig_2", "handsup_enter", 8.0, -8.0, -1, 49, 0, false, false, false)
+
+    
+    footCuffed = true
+
+    klamer_notify("Info", "Fußfesseln angelegt!", 2500, "success")
+end)
+
+RegisterNetEvent("klamer_handcuffs:uncuffFeet", function()
+    local playerPed = PlayerPedId()
+
+    FreezeEntityPosition(playerPed, false)
+    SetEntityCollision(playerPed, true, true) -- Falls nötig nochmal setzen
+    footCuffed = false
+
+    klamer_notify("Info", "Fußfesseln entfernt!", 2500, "success")
 end)
 
 

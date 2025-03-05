@@ -136,6 +136,15 @@ RegisterNetEvent("klamer_handcuffs:uncuffed", function()
     end
 end)
 
+RegisterNetEvent("klamer_handcuffs:cuffFeetPlayer", function(targetPlayerId)
+    local _source = source
+    print("Server: cuffFeetPlayer für Spieler "..tostring(targetPlayerId))
+    TriggerClientEvent("klamer_handcuffs:cuffFeet", targetPlayerId)
+end)
+
+
+
+
 RegisterNetEvent("klamer_handcuffs:dragPlayer", function(target)
     local player = source
     local xPlayer = ESX.GetPlayerFromId(player)

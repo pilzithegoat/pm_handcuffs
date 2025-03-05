@@ -13,4 +13,5 @@ Config.disable_vehicle = true   -- blocking entry and exit from the vehicle when
 Config.req_items={
     ['lockpick'] = 'lockpick',
     ['handcuff'] = 'handcuffs',
+    ['anklecuff'] = 'foot_cuffs',
 }
