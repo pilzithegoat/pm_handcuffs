@@ -94,7 +94,7 @@ exports['qtarget']:Player({
             icon = "fa-solid fa-handcuffs",
             label = "cuff",
             item = Config.req_items['handcuff'],
-            event = 'zakajdankuj',
+            event = 'cuff',
             canInteract = function(entity)
                 if IsPedAPlayer(entity) then
                     local target = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
@@ -335,6 +335,56 @@ exports['qtarget']:Player({
                 end
             end
         },
+        {
+            icon = "fa-solid fa-handcuffs",
+            label = "footcuff",
+            item = Config.req_items['handcuff'],
+            event = 'footcuff',
+            canInteract = function(entity)
+                if IsPedAPlayer(entity) then
+                    local target = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
+                    if Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(PlayerPedId()))).state.klamer_PlayerIsFootCuffed then
+                        return false
+                    end
+                    if not Player(target).state.klamer_PlayerIsFootCuffed then
+                        return true
+                    else
+                        return false
+                    end
+                end
+            end
+        },
+        {
+            icon = "fa-solid fa-handcuffs",
+            label = "foot_uncuff",
+            item = Config.req_items['handcuff'],
+            action = function(entity)
+                local playerPed = PlayerPedId()
+                local isDead = Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))).state.klamer_isDead
+                if IsEntityPlayingAnim(entity, "mp_arresting", "idle", 3) or isDead then
+                    local playerheading = GetEntityHeading(playerPed)
+                    local playerlocation = GetEntityForwardVector(playerPed)
+                    local coords = GetEntityCoords(playerPed)
+                    TriggerServerEvent("klamer_handcuffs:footuncuffPlayer", GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity)), playerheading, coords, playerlocation)
+                else
+                    klamer_notify("This player is not handcuffed")
+                end
+            end,
+            canInteract = function(entity)
+                if IsPedAPlayer(entity) then
+                    local target = GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))
+                    local isDead = Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))).state.klamer_isDead
+                    if Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(PlayerPedId()))).state.klamer_PlayerIsFootCuffed or isDead then
+                        return false
+                    end
+                    if Player(target).state.klamer_PlayerIsFootCuffed then
+                        return true
+                    else
+                        return false
+                    end
+                end
+            end
+        },
     },
     distance = 4.0
 })
@@ -396,7 +446,7 @@ local function loadAnimationDictonary(dictname)
 		end
 	end
 end
-local zakajdankowany = false
+local iscuffed = false
 
 RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords, playerlocation, rope)
     local playerPed = PlayerPedId()
@@ -424,7 +474,7 @@ RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords
         DisablePlayerFiring(playerPed, true)
         SetEnableHandcuffs(playerPed, true)
         SetPedCanPlayGestureAnims(playerPed, false)
-        zakajdankowany = true
+        iscuffed = true
         main_loop_handcuffs()
     else
         loadAnimationDictonary('mp_arresting')
@@ -435,7 +485,7 @@ RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords
         SetCurrentPedWeapon(playerPed, 'WEAPON_UNARMED', true)
         DisablePlayerFiring(playerPed, true)
         SetEnableHandcuffs(playerPed, true)
-        zakajdankowany = true
+        iscuffed = true
         main_loop_handcuffs()
         SetPedCanPlayGestureAnims(playerPed, false)
     end
@@ -444,6 +494,26 @@ RegisterNetEvent("klamer_handcuffs:cuffMe", function(playerheading, playercoords
     end
 end)
 
+
+
+local isfootcuffed = false
+RegisterNetEvent("klamer_handcuffs:footCuffMe", function(playerheading, playercoords, playerlocation)
+    local playerPed = PlayerPedId()
+
+    if playerheading then
+        local x,y,z = table.unpack(playercoords + playerlocation * 1.0)
+        SetEntityCoords(playerPed, x, y, z)
+        SetEntityHeading(playerPed, playerheading)
+        Citizen.Wait(250)
+        
+        ESX.UI.Menu.CloseAll()
+        SetCurrentPedWeapon(playerPed, 'WEAPON_UNARMED', true)
+        DisablePlayerFiring(playerPed, true)
+        SetPedCanPlayGestureAnims(playerPed, false)
+        isfootcuffed = true
+        print("3Server: cuffFeetPlayer für Spieler "..tostring(targetPlayerId))
+    end
+end)
 
 
 
@@ -469,6 +539,18 @@ RegisterNetEvent("klamer_handcuffs:cuffHim", function(fastCuff)
     end
 end)
 
+RegisterNetEvent("klamer_handcuffs:footCuffHim", function()
+    local playerPed = PlayerPedId()
+
+    print("2Server: cuffFeetPlayer für Spieler "..tostring(targetPlayerId))
+    local animationDictonary = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@'
+    local animationString = 'machinic_walkoff_mechandplayer'
+    if (DoesEntityExist(playerPed) and not IsEntityDead(playerPed) and IsPedCuffed(playerPed)) then
+        loadAnimationDictonary(animationDictonary)
+        TaskPlayAnim(playerPed, animationDictonary, animationString, 8.0, 3.0, 2000, 26, 1, 0, 0, 0)
+    end
+end)
+
 RegisterNetEvent("klamer_handcuffs:uncuffMe", function(playerheading, playercoords, playerlocation)
     local playerPed = PlayerPedId()
     if not playerheading then
@@ -479,7 +561,7 @@ RegisterNetEvent("klamer_handcuffs:uncuffMe", function(playerheading, playercoor
         SetPedCanPlayGestureAnims(playerPed, true)
         FreezeEntityPosition(playerPed, false)
         timer = 0
-        zakajdankowany = false
+        iscuffed = false
     else
         local x,y,z = table.unpack(playercoords + playerlocation * 1.0)
         SetEntityCoords(playerPed, x, y, z)
@@ -491,13 +573,32 @@ RegisterNetEvent("klamer_handcuffs:uncuffMe", function(playerheading, playercoor
         ClearPedTasks(playerPed)
         ClearPedTasksImmediately(playerPed)
         SetEnableHandcuffs(playerPed, false)
+        --
+        DisableControlAction(playerPed, 30, false)
+        DisableControlAction(playerPed, 31, false)
+        --
         DisablePlayerFiring(playerPed, false)
         SetPedCanPlayGestureAnims(playerPed, true)
         FreezeEntityPosition(playerPed, false)
         timer = 0
-        zakajdankowany = false
+        iscuffed = false
     end
 end)
+
+RegisterNetEvent("klamer_handcuffs:footuncuffMe", function(playerheading, playercoords, playerlocation)
+    local playerPed = PlayerPedId()
+
+    local x,y,z = table.unpack(playercoords + playerlocation * 1.0)
+    SetEntityCoords(playerPed, x, y, z)
+    SetEntityHeading(playerPed, playerheading)
+    DisablePlayerFiring(playerPed, false)
+    SetPedCanPlayGestureAnims(playerPed, true)
+    FreezeEntityPosition(playerPed, false)
+    timer = 0
+    isfootcuffed = false
+end)
+
+
 
 RegisterNetEvent("klamer_handcuffs:uncuffMeAfterRevive", function()
     local playerPed = PlayerPedId()
@@ -515,6 +616,15 @@ RegisterNetEvent("klamer_handcuffs:uncuffHim", function()
     loadAnimationDictonary('mp_arresting')
     Wait(250)
 	TaskPlayAnim(ped, 'mp_arresting', 'a_uncuff', 8.0, -8,-1, 2, 0, 0, 0, 0)
+	Wait(2500)
+	ClearPedTasks(ped)
+end)
+
+RegisterNetEvent("klamer_handcuffs:footuncuffHim", function()
+    local ped = PlayerPedId()
+    loadAnimationDictonary('anim@amb@clubhouse@tutorial@bkr_tut_ig3@')
+    Wait(250)
+	TaskPlayAnim(ped, 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@', 'machinic_walkoff_mechandplayer', 8.0, -8,-1, 2, 0, 0, 0, 0)
 	Wait(2500)
 	ClearPedTasks(ped)
 end)
@@ -603,7 +713,7 @@ function move_3D_text_loop()
 end
 
 function main_loop_handcuffs()
-    while zakajdankowany do
+    while iscuffed do
         if Config.disable_vehicle then
             DisableControlAction(0,23,true)
             DisableControlAction(0,75,true)
@@ -616,13 +726,13 @@ function main_loop_handcuffs()
         end
         if LocalPlayer.state.klamer_PlayerIsCuffed then
         else
-            zakajdankowany = false
+            iscuffed = false
             break
         end
         Citizen.Wait(0)
     end
 end
-AddEventHandler("zakajdankuj", function(entity)
+AddEventHandler("cuff", function(entity)
     local playerPed = PlayerPedId()
     local entity = entity.entity
     local isDead = Player(GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity))).state.klamer_isDead
@@ -642,4 +752,13 @@ AddEventHandler("zakajdankuj", function(entity)
         local coords = GetEntityCoords(playerPed)
         TriggerServerEvent("klamer_handcuffs:cuffPlayer", GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity)), playerheading, coords, playerlocation)
     end
+end)
+AddEventHandler("footcuff", function(entity)
+    local playerPed = PlayerPedId()
+    local entity = entity.entity
+    local playerheading = GetEntityHeading(playerPed)
+    local playerlocation = GetEntityForwardVector(playerPed)
+    local coords = GetEntityCoords(playerPed)
+    TriggerServerEvent("klamer_handcuffs:footcuffPlayer", GetPlayerServerId(NetworkGetPlayerIndexFromPed(entity)), playerheading, coords, playerlocation)
+    print("1Server: cuffFeetPlayer für Spieler "..tostring(PlayerPedId))
 end)

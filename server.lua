@@ -18,6 +18,9 @@ CreateThread(function()
         if Player(v).state.klamer_PlayerDraggingSomeone then
             Player(v).state.klamer_PlayerDraggingSomeone = false
         end
+        if Player(v).state.klamer_PlayerIsFootCuffed then
+            Player(v).state.klamer_PlayerIsFootCuffed = false
+        end
     end
 end)
 
@@ -51,7 +54,6 @@ RegisterNetEvent("klamer_handcuffs:cuffPlayer", function(target, playerheading, 
         return
     end
 
-    Player(target).state.klamer_PlayerIsCuffed = true
 
     if playerheading then
         TriggerClientEvent("klamer_handcuffs:cuffMe", target, playerheading, coords, playerlocation)
@@ -68,6 +70,38 @@ RegisterNetEvent("klamer_handcuffs:cuffPlayer", function(target, playerheading, 
     local targetLicense = string.gsub(GetPlayerIdentifier(player,1),"license:","")
 end)
 
+RegisterNetEvent("klamer_handcuffs:footCuffPlayer", function(target, playerheading, coords, playerlocation)
+    print("Server: cuffFeetPlayer für Spieler "..tostring(targetPlayerId))
+    local player = source
+    local xPlayer = ESX.GetPlayerFromId(player)
+    local targetPed = GetPlayerPed(target)
+
+    local targetCoords = GetEntityCoords(targetPed)
+    local localCoords = GetEntityCoords(GetPlayerPed(player))
+
+    Player(target).state.klamer_PlayerIsFootCuffed = true
+
+    Player(target).DisableControlAction(0, 32, true)
+    Player(target).DisableControlAction(0, 33, true)
+    Player(target).DisableControlAction(0, 34, true)
+    Player(target).DisableControlAction(0, 35, true)
+
+    if playerheading then
+        TriggerClientEvent("klamer_handcuffs:footCuffMe", target, playerheading, coords, playerlocation)
+        TriggerClientEvent("klamer_handcuffs:footCuffHim", player, true)
+    else
+        TriggerClientEvent("klamer_handcuffs:footCuffMe", target)
+        TriggerClientEvent("klamer_handcuffs:footCuffHim", player, false)
+    end
+
+    TriggerClientEvent('klamer_notify_handcuff',"You handcuffed ID: ["..target.."]")
+    local xTarget = ESX.GetPlayerFromId(target)
+    xTarget.showNotification("You have been handcuffed by the ID: ["..player.."]")
+
+    local targetLicense = string.gsub(GetPlayerIdentifier(player,1),"license:","")
+end)
+
+
 RegisterNetEvent("klamer_handcuffs:uncuffPlayer", function(target, playerheading, coords, playerlocation)
     local player = source
     local xPlayer = ESX.GetPlayerFromId(player)
@@ -82,10 +116,11 @@ RegisterNetEvent("klamer_handcuffs:uncuffPlayer", function(target, playerheading
         return
     end
 
-    Player(target).state.klamer_PlayerIsCuffed = false
+    Player(xPlayer).state.klamer_PlayerIsCuffed = false
 
     TriggerClientEvent("klamer_handcuffs:uncuffMe", target, playerheading, coords, playerlocation)
     TriggerClientEvent("klamer_handcuffs:uncuffHim", player)
+
 
     TriggerClientEvent('klamer_notify_handcuff',"you forged handcuffs ID: ["..target.."]")
     local xTarget = ESX.GetPlayerFromId(target)
@@ -93,6 +128,20 @@ RegisterNetEvent("klamer_handcuffs:uncuffPlayer", function(target, playerheading
 
     local targetLicense = string.gsub(GetPlayerIdentifier(player,1),"license:","")
 end)
+
+RegisterNetEvent("klamer_handcuffs:footuncuffPlayer", function(target, playerheading, coords, playerlocation)
+    local player = source
+    local xPlayer = ESX.GetPlayerFromId(player)
+
+    if Player(player).state.klamer_PlayerIsCuffed then
+        TriggerClientEvent('klamer_notify_handcuff',"You can't uncuff while handcuffed.")
+        return
+    end
+
+    if not Player(target).state.klamer_PlayerIsCuffed then
+        TriggerClientEvent('klamer_notify_handcuff',"This person is not handcuffed")
+        return
+    end
 
 RegisterNetEvent("klamer_handcuffs:searchInventory", function(target)
     local player = source
@@ -132,6 +181,16 @@ RegisterNetEvent("klamer_handcuffs:uncuffed", function()
 
     if Player(player).state.klamer_PlayerIsCuffed then
         Player(player).state.klamer_PlayerIsCuffed = false
+        return
+    end
+end)
+
+RegisterNetEvent("klamer_handcuffs:footuncuffed", function()
+    local player = source
+    local xPlayer = ESX.GetPlayerFromId(player)
+
+    if Player(player).state.klamer_PlayerIsFootCuffed then
+        Player(player).state.klamer_PlayerIsFootCuffed = false
         return
     end
 end)
